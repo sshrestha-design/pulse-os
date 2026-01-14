@@ -43,7 +43,15 @@ export default function PulseOS() {
       // Only run if the user has no folders saved yet
       if (folders.length === 0) {
         // ADD YOUR FILENAMES HERE (Must match the files in your public folder)
-        const defaultFiles = ['Global.m3u', 'Chill.m3u', 'Electronic.m3u']; 
+        const defaultFiles = [
+  'india.m3u', 
+  'indie.m3u', 
+  'pop.m3u', 
+  'rap.m3u', 
+  'rock.m3u', 
+  'top_40.m3u', 
+  'urban.m3u'
+];
         let preloadedFolders = [];
 
         for (const fileName of defaultFiles) {
