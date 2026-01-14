@@ -41,13 +41,11 @@ export default function PulseOS() {
   const audioRef = useRef(new Audio());
   const hlsRef = useRef(null);
 
-  // --- 1. FIXED PRELOAD ENGINE ---
+  // --- 1. PRELOAD ENGINE (Public Directory) ---
   useEffect(() => {
     const preloadM3UFiles = async () => {
-      // Check for a specific 'initialized' flag instead of just folder length
-      const isInitialized = localStorage.getItem('pulse_init_v1');
-      
-      if (!isInitialized || folders.length === 0) {
+      // Force reload if library is empty or first time user
+      if (folders.length === 0) {
         const defaultFiles = ['india.m3u', 'indie.m3u', 'pop.m3u', 'rap.m3u', 'rock.m3u', 'top_40.m3u', 'urban.m3u'];
         let preloadedFolders = [];
 
@@ -84,13 +82,9 @@ export default function PulseOS() {
             }
           } catch (e) { console.error("PRELOAD_FAIL:", fileName); }
         }
-        if (preloadedFolders.length > 0) {
-          setFolders(preloadedFolders);
-          localStorage.setItem('pulse_init_v1', 'true');
-        }
+        if (preloadedFolders.length > 0) setFolders(preloadedFolders);
       }
     };
-
     preloadM3UFiles();
   }, []);
 
@@ -105,7 +99,6 @@ export default function PulseOS() {
         return;
       }
       try {
-        // Capture stream from the audio element
         const stream = audioRef.current.captureStream ? audioRef.current.captureStream() : audioRef.current.mozCaptureStream();
         mediaRecorderRef.current = new MediaRecorder(stream);
         chunksRef.current = [];
@@ -123,21 +116,29 @@ export default function PulseOS() {
         mediaRecorderRef.current.start();
         setIsRecording(true);
       } catch (err) {
-        console.error("REC_ERROR:", err);
-        alert("SECURITY_BLOCKED: Browser requires HTTPS or CORS permission from station.");
+        alert("SECURITY_BLOCKED: Browser requires HTTPS or CORS permission.");
       }
     }
   };
 
-  // --- PERSISTENCE & DEEP LINKING ---
+  // --- 3. PERSISTENCE & GLOBAL ERROR HANDLING ---
   useEffect(() => {
     localStorage.setItem('pulse_v4_lib', JSON.stringify(folders));
     localStorage.setItem('pulse_favs', JSON.stringify(favorites));
   }, [folders, favorites]);
 
   useEffect(() => {
-    audioRef.current.crossOrigin = "anonymous"; // Crucial for Recorder
+    audioRef.current.crossOrigin = "anonymous";
     audioRef.current.volume = volume;
+
+    const handleError = () => {
+      setMetadata("SIGNAL_LOST_404");
+      setIsLoading(false);
+      setIsPlaying(false);
+    };
+
+    audioRef.current.addEventListener('error', handleError);
+
     const params = new URLSearchParams(window.location.search);
     const sharedSignal = params.get('signal');
     if (sharedSignal) {
@@ -146,6 +147,8 @@ export default function PulseOS() {
         setTimeout(() => playStation({ id: 'uplink-' + Date.now(), ...decoded }), 1200);
       } catch (e) { console.error("DECODE_ERROR"); }
     }
+
+    return () => audioRef.current.removeEventListener('error', handleError);
   }, []);
 
   useEffect(() => {
@@ -176,12 +179,7 @@ export default function PulseOS() {
           name = "";
         }
       });
-      setFolders([...folders, { 
-        id: Date.now().toString(), 
-        name: file.name.toUpperCase().replace('.M3U', ''), 
-        stations, 
-        listeners: Math.floor(Math.random() * 100) 
-      }]);
+      setFolders([...folders, { id: Date.now().toString(), name: file.name.toUpperCase().replace('.M3U', ''), stations, listeners: Math.floor(Math.random() * 100) }]);
     };
     reader.readAsText(file);
   };
