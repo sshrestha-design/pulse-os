@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Radio, Volume2, Upload, ChevronLeft, Activity, Orbit, Search, Layers, Star, Disc, Share2, Zap, SignalHigh, Trash2 } from 'lucide-react';
+import { Play, Pause, Radio, Volume2, Upload, ChevronLeft, Activity, Orbit, Search, Layers, Star, Disc, Share2, Zap, SignalHigh, Trash2, Signal } from 'lucide-react';
 import Hls from 'hls.js';
 
+// --- THEME & BRANDING ---
 const THEME = {
   bg: '#0A0A0B',
   surface: '#121214',
   border: '#1F1F22',
-  accent: '#DFFF00',
+  accent: '#DFFF00', // Neon Cyber-Yellow
   text: '#FFFFFF',
   textMuted: '#6B6B76',
   danger: '#FF0033'
@@ -36,7 +37,7 @@ export default function PulseOS() {
   const audioRef = useRef(new Audio());
   const hlsRef = useRef(null);
 
-  // --- PERSISTENCE & SYNC ---
+  // --- PERSISTENCE & DEEP LINKING ---
   useEffect(() => {
     localStorage.setItem('pulse_v4_lib', JSON.stringify(folders));
     localStorage.setItem('pulse_favs', JSON.stringify(favorites));
@@ -46,6 +47,7 @@ export default function PulseOS() {
     audioRef.current.crossOrigin = "anonymous";
     audioRef.current.volume = volume;
 
+    // Handle incoming shared signal links
     const params = new URLSearchParams(window.location.search);
     const sharedSignal = params.get('signal');
     if (sharedSignal) {
@@ -56,6 +58,7 @@ export default function PulseOS() {
     }
   }, []);
 
+  // Simulates fluctuating "Listener" counts for the PulseOS aesthetic
   useEffect(() => {
     const interval = setInterval(() => {
       setFolders(prev => prev.map(f => ({
@@ -68,7 +71,7 @@ export default function PulseOS() {
 
   useEffect(() => { audioRef.current.volume = volume; }, [volume]);
 
-  // --- LIBRARY ACTIONS ---
+  // --- ACTIONS ---
   const handleImport = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -106,16 +109,17 @@ export default function PulseOS() {
   const deleteStation = (stationId, e) => {
     e.stopPropagation();
     setFolders(prev => prev.map(f => {
-      if (f.id === activeFolder.id) {
+      if (activeFolder && f.id === activeFolder.id) {
         const updated = f.stations.filter(st => st.id !== stationId);
-        setActiveFolder({...f, stations: updated});
         return { ...f, stations: updated };
       }
       return f;
     }));
+    if (activeFolder) {
+      setActiveFolder(prev => ({...prev, stations: prev.stations.filter(st => st.id !== stationId)}));
+    }
   };
 
-  // --- PLAYBACK ENGINE ---
   const playStation = (station) => {
     if (current?.id === station.id && isPlaying) {
       audioRef.current.pause();
@@ -127,7 +131,10 @@ export default function PulseOS() {
     if (hlsRef.current) hlsRef.current.destroy();
 
     const onReady = () => {
-      audioRef.current.play().then(() => { setIsPlaying(true); setIsLoading(false); }).catch(() => setIsLoading(false));
+      audioRef.current.play().then(() => { 
+        setIsPlaying(true); 
+        setIsLoading(false); 
+      }).catch(() => setIsLoading(false));
     };
 
     if (station.url.includes('m3u8') && Hls.isSupported()) {
@@ -148,54 +155,59 @@ export default function PulseOS() {
     if (!current) return;
     const encoded = btoa(JSON.stringify({ name: current.name, url: current.url }));
     const shareUrl = `${window.location.origin}${window.location.pathname}?signal=${encoded}`;
-    if (navigator.share) await navigator.share({ title: 'PulseOS', url: shareUrl });
-    else { navigator.clipboard.writeText(shareUrl); alert("LINK_COPIED"); }
+    if (navigator.share) await navigator.share({ title: 'PulseOS Signal', url: shareUrl });
+    else { navigator.clipboard.writeText(shareUrl); alert("SIGNAL_LINK_COPIED"); }
   };
 
   return (
     <div style={s.app}>
       <style>{`
-        body { background: ${THEME.bg}; margin: 0; font-family: 'Inter', sans-serif; color: white; overflow: hidden; }
+        body { background: ${THEME.bg}; margin: 0; font-family: 'JetBrains Mono', monospace; color: white; overflow: hidden; }
         .row-item { border-bottom: 1px solid ${THEME.border}; display: flex; align-items: center; justify-content: space-between; padding: 14px 10px; cursor: pointer; transition: 0.2s; }
         .row-item:hover { background: ${THEME.surface}; }
         .trend-badge { font-size: 9px; color: ${THEME.accent}; border: 1px solid ${THEME.accent}; padding: 1px 5px; border-radius: 4px; display: flex; align-items: center; gap: 4px; }
         .del-btn { opacity: 0.3; transition: 0.2s; }
         .del-btn:hover { opacity: 1; color: ${THEME.danger}; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .loading { animation: spin 1s linear infinite; }
+        .loading { animation: spin 2s linear infinite; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: ${THEME.border}; }
       `}</style>
 
       {/* SIDEBAR */}
       <aside style={s.side}>
         <div style={s.logo}><Zap size={16} fill={THEME.accent}/> PULSE_OS</div>
         <div style={{flex: 1, overflowY: 'auto'}}>
-          <p style={s.label}>SAVED</p>
+          <p style={s.label}>SAVED_NODES</p>
           <button onClick={() => setActiveFolder({id:'favs', name:'FAVORITES', stations: favorites})} style={{...s.navBtn, color: activeFolder?.id === 'favs' ? THEME.accent : THEME.textMuted}}>
-            <Star size={14} fill={activeFolder?.id === 'favs' ? THEME.accent : 'none'}/> FAVS
+            <Star size={14} fill={activeFolder?.id === 'favs' ? THEME.accent : 'none'}/> FAVORITES
           </button>
           
-          <p style={{...s.label, marginTop: '30px'}}>TRENDING_NODES</p>
+          <p style={{...s.label, marginTop: '30px'}}>SIGNAL_DIRECTORIES</p>
           {[...folders].sort((a,b)=>b.listeners-a.listeners).map(f => (
             <div key={f.id} onClick={() => setActiveFolder(f)} style={{...s.trendItem, color: activeFolder?.id === f.id ? THEME.accent : THEME.textMuted}}>
-              <div style={{display:'flex', alignItems:'center', gap:'10px', overflow:'hidden'}}><Layers size={14} style={{flexShrink:0}}/> <span style={{whiteSpace:'nowrap', textOverflow:'ellipsis', overflow:'hidden'}}>{f.name}</span></div>
+              <div style={{display:'flex', alignItems:'center', gap:'10px', overflow:'hidden'}}>
+                <Layers size={14} style={{flexShrink:0}}/> 
+                <span style={{whiteSpace:'nowrap', textOverflow:'ellipsis', overflow:'hidden'}}>{f.name}</span>
+              </div>
               <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
-                <div className="trend-badge">{f.listeners}</div>
+                <div className="trend-badge"><Activity size={8} /> {f.listeners}</div>
                 {f.id !== 'core-1' && <Trash2 size={12} className="del-btn" onClick={(e) => deleteFolder(f.id, e)}/>}
               </div>
             </div>
           ))}
         </div>
-        <label style={s.import}><Upload size={14}/> IMPORT_M3U <input type="file" hidden onChange={handleImport} accept=".m3u,.m3u8"/></label>
+        <label style={s.import}><Upload size={14}/> UPLOAD M3U <input type="file" hidden onChange={handleImport} accept=".m3u,.m3u8"/></label>
       </aside>
 
-      {/* MAIN */}
+      {/* MAIN VIEW */}
       <main style={s.main}>
         {activeFolder ? (
           <div style={{padding: '40px'}}>
-            <button onClick={() => setActiveFolder(null)} style={s.back}><ChevronLeft size={16}/> ROOT</button>
+            <button onClick={() => setActiveFolder(null)} style={s.back}><ChevronLeft size={16}/> BACK_TO_ROOT</button>
             <div style={s.header}>
               <h1 style={s.title}>{activeFolder.name}</h1>
-              <div style={s.search}><Search size={16}/><input placeholder="FILTER..." onChange={e => setSearch(e.target.value)} style={s.input}/></div>
+              <div style={s.search}><Search size={16}/><input placeholder="FILTER_SIGNAL..." onChange={e => setSearch(e.target.value)} style={s.input}/></div>
             </div>
             {activeFolder.stations.filter(st => st.name.toLowerCase().includes(search.toLowerCase())).map(st => (
               <div key={st.id} onClick={() => playStation(st)} className="row-item">
@@ -212,31 +224,43 @@ export default function PulseOS() {
           </div>
         ) : (
           <div style={s.empty}>
-            <Orbit size={80} color={isPlaying ? THEME.accent : THEME.border} className={isLoading ? 'loading' : ''}/>
-            <p style={{color: THEME.textMuted, marginTop: '20px', fontSize: '0.6rem', letterSpacing: '2px'}}>AWAITING_UPLINK</p>
+            <Orbit size={100} color={isPlaying ? THEME.accent : THEME.border} className={isLoading ? 'loading' : ''}/>
+            <div style={{textAlign: 'center', marginTop: '30px'}}>
+              <h1 style={{letterSpacing: '8px', fontWeight: 900, marginBottom: '5px'}}>PULSE_OS</h1>
+              <p style={{color: THEME.textMuted, fontSize: '0.6rem', letterSpacing: '2px'}}>NEP_RADIO // M3U_ENGINE_V4</p>
+              <div style={{marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'center'}}>
+                 <div style={s.pill}>NO_ADS</div>
+                 <div style={s.pill}>OPEN_SIGNAL</div>
+                 <div style={s.pill}>ENCRYPTED</div>
+              </div>
+            </div>
           </div>
         )}
       </main>
 
-      {/* FOOTER */}
+      {/* GLOBAL CONTROLLER */}
       <footer style={s.footer}>
         <div style={s.fLeft}>
-          <div style={{fontSize: '0.6rem', color: THEME.accent, fontWeight: 800}}>{isPlaying ? '● LIVE' : '○ IDLE'}</div>
-          <div style={{fontWeight: 900, fontSize: '1.2rem'}}>{current ? current.name : 'SYSTEM_IDLE'}</div>
-          <div style={{fontSize: '0.6rem', color: THEME.textMuted, marginTop: '4px'}}>{metadata}</div>
+          <div style={{fontSize: '0.6rem', color: THEME.accent, fontWeight: 800, display:'flex', alignItems:'center', gap: '6px'}}>
+            {isPlaying ? <><span style={s.liveDot}></span> LIVE_SIGNAL</> : '○ SYSTEM_IDLE'}
+          </div>
+          <div style={{fontWeight: 900, fontSize: '1.2rem', letterSpacing: '-1px', marginTop: '2px'}}>{current ? current.name.toUpperCase() : 'AWAITING_UPLINK'}</div>
+          <div style={{fontSize: '0.6rem', color: THEME.textMuted, marginTop: '4px', fontFamily: 'monospace'}}>{metadata}</div>
         </div>
+        
         <div style={s.fCenter}>
-          <div style={{display:'flex', alignItems:'center', gap:'25px'}}>
-            <button onClick={shareStation} style={s.iconBtn}><Share2 size={24}/></button>
+          <div style={{display:'flex', alignItems:'center', gap:'30px'}}>
+            <button onClick={shareStation} style={s.iconBtn} title="Share Signal"><Share2 size={20}/></button>
             <button onClick={() => current && playStation(current)} style={s.playBtn}>
               {isLoading ? <Orbit size={24} className="loading"/> : isPlaying ? <Pause size={24} fill="black"/> : <Play size={24} fill="black"/>}
             </button>
-            <button style={s.iconBtn}><Disc size={24}/></button>
+            <button style={s.iconBtn} title="Signal Info"><Activity size={20}/></button>
           </div>
         </div>
+
         <div style={s.fRight}>
           <Volume2 size={16} color={THEME.textMuted}/>
-          <input type="range" min="0" max="1" step="0.01" value={volume} onChange={e => setVolume(parseFloat(e.target.value))} style={{width: '100px', accentColor: THEME.accent}}/>
+          <input type="range" min="0" max="1" step="0.01" value={volume} onChange={e => setVolume(parseFloat(e.target.value))} style={s.volumeSlider}/>
         </div>
       </footer>
     </div>
@@ -244,24 +268,27 @@ export default function PulseOS() {
 }
 
 const s = {
-  app: { height: '100vh', display: 'grid', gridTemplateColumns: '220px 1fr', gridTemplateRows: '1fr 110px' },
-  side: { background: THEME.bg, borderRight: `1px solid ${THEME.border}`, padding: '25px', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-  logo: { fontWeight: 900, fontSize: '0.8rem', letterSpacing: '2px', marginBottom: '40px', display:'flex', alignItems:'center', gap:'8px' },
-  label: { fontSize: '0.6rem', color: THEME.textMuted, fontWeight: 800, marginBottom: '15px' },
-  navBtn: { display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 0', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', background: 'none', border: 'none', textAlign: 'left', width: '100%', color: THEME.textMuted },
-  trendItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' },
-  import: { border: `1px dashed ${THEME.border}`, padding: '12px', textAlign: 'center', fontSize: '0.65rem', borderRadius: '4px', cursor: 'pointer', marginTop: 'auto', color: THEME.textMuted },
-  main: { background: THEME.bg, overflowY: 'auto' },
+  app: { height: '100vh', display: 'grid', gridTemplateColumns: '260px 1fr', gridTemplateRows: '1fr 120px', backgroundColor: THEME.bg },
+  side: { background: THEME.bg, borderRight: `1px solid ${THEME.border}`, padding: '30px', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+  logo: { fontWeight: 900, fontSize: '0.9rem', letterSpacing: '3px', marginBottom: '40px', display:'flex', alignItems:'center', gap:'10px', color: THEME.accent },
+  label: { fontSize: '0.6rem', color: THEME.textMuted, fontWeight: 800, marginBottom: '15px', letterSpacing: '1px' },
+  navBtn: { display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 0', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', background: 'none', border: 'none', textAlign: 'left', width: '100%', transition: '0.2s' },
+  trendItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: '0.2s' },
+  import: { border: `1px dashed ${THEME.border}`, padding: '15px', textAlign: 'center', fontSize: '0.65rem', borderRadius: '4px', cursor: 'pointer', marginTop: 'auto', color: THEME.textMuted, transition: '0.2s' },
+  main: { background: `radial-gradient(circle at 50% 50%, ${THEME.surface} 0%, ${THEME.bg} 100%)`, overflowY: 'auto' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' },
-  title: { fontSize: '2.5rem', fontWeight: 900, margin: 0, letterSpacing: '-2px' },
+  title: { fontSize: '3rem', fontWeight: 900, margin: 0, letterSpacing: '-3px' },
   back: { background: 'none', border: 'none', color: THEME.textMuted, fontSize: '0.65rem', fontWeight: 800, cursor: 'pointer', display:'flex', alignItems:'center', gap:'5px', marginBottom:'10px' },
-  search: { background: THEME.surface, padding: '8px 12px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '10px', border: `1px solid ${THEME.border}` },
-  input: { background: 'none', border: 'none', color: 'white', outline: 'none', fontSize: '0.8rem' },
+  search: { background: THEME.bg, padding: '8px 15px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '10px', border: `1px solid ${THEME.border}` },
+  input: { background: 'none', border: 'none', color: 'white', outline: 'none', fontSize: '0.75rem', width: '150px' },
   empty: { height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
-  footer: { gridColumn: '1 / 3', background: THEME.bg, borderTop: `1px solid ${THEME.border}`, display: 'flex', alignItems: 'center', padding: '0 40px' },
+  pill: { fontSize: '0.5rem', padding: '4px 8px', border: `1px solid ${THEME.border}`, borderRadius: '10px', color: THEME.textMuted, fontWeight: 800 },
+  footer: { gridColumn: '1 / 3', background: THEME.bg, borderTop: `1px solid ${THEME.border}`, display: 'flex', alignItems: 'center', padding: '0 50px' },
   fLeft: { flex: 1 },
   fCenter: { flex: 1, display: 'flex', justifyContent: 'center' },
-  playBtn: { width: '60px', height: '60px', borderRadius: '50%', background: THEME.accent, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  playBtn: { width: '64px', height: '64px', borderRadius: '50%', background: THEME.accent, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s transform', boxShadow: `0 0 20px ${THEME.accent}33` },
   fRight: { flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '15px' },
-  iconBtn: { background: 'none', border: 'none', cursor: 'pointer', color: THEME.textMuted }
+  iconBtn: { background: 'none', border: 'none', cursor: 'pointer', color: THEME.textMuted, transition: '0.2s' },
+  liveDot: { width: '6px', height: '6px', background: THEME.accent, borderRadius: '50%', display: 'inline-block' },
+  volumeSlider: { width: '100px', accentColor: THEME.accent, cursor: 'pointer', opacity: 0.6 }
 };
