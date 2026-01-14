@@ -17,7 +17,6 @@ export default function PulseOS() {
   // --- CORE STATE ---
   const [folders, setFolders] = useState(() => {
     const saved = localStorage.getItem('pulse_v4_lib');
-    // Start empty to allow the preload effect to run on first visit
     return saved ? JSON.parse(saved) : [];
   });
   
@@ -33,31 +32,29 @@ export default function PulseOS() {
   const [metadata, setMetadata] = useState("SIGNAL_IDLE");
   const [volume, setVolume] = useState(0.7);
   const [search, setSearch] = useState("");
+  
+  // Recorder State
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const chunksRef = useRef([]);
 
   const audioRef = useRef(new Audio());
   const hlsRef = useRef(null);
 
-  // --- 1. NEW: PRELOAD ENGINE (Reads from /public folder) ---
+  // --- 1. FIXED PRELOAD ENGINE ---
   useEffect(() => {
     const preloadM3UFiles = async () => {
-      // Only run if the user has no folders saved yet
-      if (folders.length === 0) {
-        // ADD YOUR FILENAMES HERE (Must match the files in your public folder)
-        const defaultFiles = [
-  'india.m3u', 
-  'indie.m3u', 
-  'pop.m3u', 
-  'rap.m3u', 
-  'rock.m3u', 
-  'top_40.m3u', 
-  'urban.m3u'
-];
+      // Check for a specific 'initialized' flag instead of just folder length
+      const isInitialized = localStorage.getItem('pulse_init_v1');
+      
+      if (!isInitialized || folders.length === 0) {
+        const defaultFiles = ['india.m3u', 'indie.m3u', 'pop.m3u', 'rap.m3u', 'rock.m3u', 'top_40.m3u', 'urban.m3u'];
         let preloadedFolders = [];
 
         for (const fileName of defaultFiles) {
           try {
             const response = await fetch(`/${fileName}`);
-            if (!response.ok) continue; // Skip if file is missing
+            if (!response.ok) continue; 
             const text = await response.text();
             
             const lines = text.split('\n');
@@ -87,12 +84,50 @@ export default function PulseOS() {
             }
           } catch (e) { console.error("PRELOAD_FAIL:", fileName); }
         }
-        if (preloadedFolders.length > 0) setFolders(preloadedFolders);
+        if (preloadedFolders.length > 0) {
+          setFolders(preloadedFolders);
+          localStorage.setItem('pulse_init_v1', 'true');
+        }
       }
     };
 
     preloadM3UFiles();
-  }, []); // Only runs once on mount
+  }, []);
+
+  // --- 2. RECORDER LOGIC ---
+  const toggleRecord = () => {
+    if (isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    } else {
+      if (!isPlaying) {
+        alert("SIGNAL_REQUIRED: Start a stream to record.");
+        return;
+      }
+      try {
+        // Capture stream from the audio element
+        const stream = audioRef.current.captureStream ? audioRef.current.captureStream() : audioRef.current.mozCaptureStream();
+        mediaRecorderRef.current = new MediaRecorder(stream);
+        chunksRef.current = [];
+
+        mediaRecorderRef.current.ondataavailable = (e) => chunksRef.current.push(e.data);
+        mediaRecorderRef.current.onstop = () => {
+          const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `PULSE_REC_${current?.name || 'SIGNAL'}.webm`;
+          a.click();
+        };
+
+        mediaRecorderRef.current.start();
+        setIsRecording(true);
+      } catch (err) {
+        console.error("REC_ERROR:", err);
+        alert("SECURITY_BLOCKED: Browser requires HTTPS or CORS permission from station.");
+      }
+    }
+  };
 
   // --- PERSISTENCE & DEEP LINKING ---
   useEffect(() => {
@@ -101,7 +136,7 @@ export default function PulseOS() {
   }, [folders, favorites]);
 
   useEffect(() => {
-    audioRef.current.crossOrigin = "anonymous";
+    audioRef.current.crossOrigin = "anonymous"; // Crucial for Recorder
     audioRef.current.volume = volume;
     const params = new URLSearchParams(window.location.search);
     const sharedSignal = params.get('signal');
@@ -278,7 +313,9 @@ export default function PulseOS() {
             <button onClick={() => current && playStation(current)} style={s.playBtn}>
               {isLoading ? <Orbit size={24} className="loading"/> : isPlaying ? <Pause size={24} fill="black"/> : <Play size={24} fill="black"/>}
             </button>
-            <button style={s.iconBtn}><Disc size={24}/></button>
+            <button onClick={toggleRecord} style={{...s.iconBtn, color: isRecording ? THEME.danger : THEME.textMuted}}>
+              <Disc size={24} className={isRecording ? 'loading' : ''}/>
+            </button>
           </div>
         </div>
         <div style={s.fRight}>
