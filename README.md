@@ -1,16 +1,72 @@
-# React + Vite
+To create a professional README for PulseOS, it's important to capture both its technical sophistication and its unique "industrial/brutalist" aesthetic. Based on the project's details, here is a structured README template you can use.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+📻 PulseOS
+A High-Fidelity M3U/HLS Stream Engine & Radio Operating System
 
-Currently, two official plugins are available:
+PulseOS ![Uploading Area.gif…]()
+is a minimalist, browser-based radio operating system designed for audiophiles who appreciate the "Winamp" era but crave a modern, brutalist interface. It isn't just a music player—it's a "signal receiver" built to handle massive M3U/HLS directories with zero friction and high performance.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Explore the Demo
 
-## React Compiler
+⚡ Key Features
+HLS/M3U Native Support: Seamlessly stream live radio signals using hls.js for high-performance delivery.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Dynamic Signal Discovery: Pre-loaded with global directories spanning Indie, Rap, Rock, and Urban genres.
 
-## Expanding the ESLint configuration
+Persisted Library: Your local M3U uploads and favorites are stored securely in the browser's local storage.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Deep Linking: Share your current "Signal" (station) via Base64-encoded URL parameters.
+
+Industrial UI: Built with a "JetBrains Mono" aesthetic, featuring real-time listener simulation and signal metadata.
+
+🛠 Tech Stack
+Framework: React
+
+Streaming: hls.js for HTTP Live Streaming.
+
+Icons: Lucide-React for a sharp, technical look.
+
+Styling: CSS-in-JS for a self-contained, theme-able architecture.
+
+Deployment: Optimized for Vercel (Edge-ready).
+
+🚀 Getting Started
+Prerequisites
+
+Node.js (v18 or higher)
+
+npm or yarn
+
+Installation
+
+Clone the repository:
+
+Bash
+git clone https://github.com/sshrestha-design/pulse-os.git
+cd pulse-os
+Install dependencies:
+
+Bash
+npm install
+Run the development server:
+
+Bash
+npm run dev
+Open http://localhost:3000 to view it in your browser.
+
+📁 Project Structure
+Plaintext
+├── src/
+│   ├── components/       # UI elements (Signal Display, Controls)
+│   ├── hooks/            # Custom React hooks for Audio/HLS logic
+│   ├── styles/           # Theme definitions and global CSS
+│   └── utils/            # M3U parsing and Base64 encoding tools
+├── public/               # Static assets
+└── package.json
+📝 License
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+🤝 Contributing
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+Created by sshrestha-design
