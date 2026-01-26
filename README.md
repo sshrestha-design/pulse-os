@@ -4,7 +4,7 @@ To create a professional README for PulseOS, it's important to capture both its 
 A High-Fidelity M3U/HLS Stream Engine & Radio Operating System
 
 PulseOS
-![Uploading Area.gif…]()
+![Area](https://github.com/user-attachments/assets/8a128867-5f38-482a-bbef-955a1b81f87d)
 
 is a minimalist, browser-based radio operating system designed for audiophiles who appreciate the "Winamp" era but crave a modern, brutalist interface. It isn't just a music player—it's a "signal receiver" built to handle massive M3U/HLS directories with zero friction and high performance.
 
